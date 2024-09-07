@@ -50,8 +50,8 @@
 	<!-- begin robot_0 -->
 	<include file="$(find rocopar_bringup)/launch/robot_bringup.launch">
 		<arg name="robot_namespace" value="robot_0" />
-        <arg name="init_pose_x" value="4.0"/>
-        <arg name="init_pose_y" value="2.0"/>
+        <arg name="init_pose_x" value="0.0"/>
+        <arg name="init_pose_y" value="0.0"/>
         <arg name="init_pose_z" value="0.0"/>
         <arg name="init_pose_yaw" value="0.0"/>
 		<arg name="maxUrange" value="$(arg maxUrange)"/>
@@ -64,8 +64,8 @@
 	<!-- begin robot_1 -->
 	<include file="$(find rocopar_bringup)/launch/robot_bringup.launch">
 		<arg name="robot_namespace" value="robot_1" />
-        <arg name="init_pose_x" value="2.0"/>
-        <arg name="init_pose_y" value="4.0"/>
+        <arg name="init_pose_x" value="0.0"/>
+        <arg name="init_pose_y" value="0.0"/>
         <arg name="init_pose_z" value="0.0"/>
         <arg name="init_pose_yaw" value="0.0"/>
 		<arg name="maxUrange" value="$(arg maxUrange)"/>
