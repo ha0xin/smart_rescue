@@ -1,0 +1,55 @@
+<launch>
+	<!-- This file contains a robot instance for multi-robot system. -->
+	<!-- arguments -->
+	<arg name="robot_namespace" default="/"/>
+	<arg name="init_pose_x" default="0.0"/>
+	<arg name="init_pose_y" default="0.0"/>
+	<arg name="init_pose_z" default="0.0"/>
+	<arg name="init_pose_yaw" default="0.0"/>
+	<arg name="maxUrange" default="5.9"/>
+	<arg name="xmin" default="-20"/>
+	<arg name="ymin" default="-20"/>
+	<arg name="xmax" default="20"/>
+	<arg name="ymax" default="20"/>
+    <arg name="slam_method" default="slam_gmapping" doc="[slam_gmapping, slam_toolbox, cartographer]"/>
+	<arg name="model" default="diff" doc="[diff, omni, car]"/>
+	<!-- <arg name="map_origin_x" default="0.0"/>
+	<arg name="map_origin_y" default="0.0"/> -->
+
+	<!-- begin a robot instance-->
+	<group ns="$(arg robot_namespace)">
+		<!-- parameters -->
+        <param name="map_merge/init_pose_x" value="$(arg init_pose_x)"/>
+        <param name="map_merge/init_pose_y" value="$(arg init_pose_y)"/>
+        <param name="map_merge/init_pose_z" value="$(arg init_pose_z)"/>
+        <param name="map_merge/init_pose_yaw" value="$(arg init_pose_yaw)"/>
+
+		<!-- move_base -->
+		<include file="$(find rocopar_bringup)/launch/navigation/move_base.launch">
+			<arg name="robot_namespace" value="$(arg robot_namespace)"/>
+			<arg name="model" value="$(arg model)"/>
+			<arg name="map_topic" value="map"/>
+			<arg name="scan_topic" value="base_scan"/>
+			<!-- <arg name="base_global_planner" default="voronoi_planner/VoronoiPlanner"/> -->
+		</include>
+
+		<!-- slam_method -->
+		<include file="$(find rocopar_bringup)/launch/slam/$(arg slam_method).launch">
+			<arg name="robot_namespace" value="$(arg robot_namespace)"/>
+			<arg name="map_topic" value="map"/>
+			<arg name="scan_topic" value="base_scan"/>
+			<arg name="maxUrange" value="$(arg maxUrange)"/>
+			<arg name="xmin" value="$(arg xmin)"/>
+			<arg name="ymin" value="$(arg ymin)"/>
+			<arg name="xmax" value="$(arg xmax)"/>
+			<arg name="ymax" value="$(arg ymax)"/>
+		</include>
+
+		<!-- static TF broadcaster -->
+		<node name="static_tf_broadcaster_1" pkg="tf2_ros" type="static_transform_publisher"
+			args="0 0 0 0 0 0 map $(arg robot_namespace)/map"/>
+
+		<node name="static_tf_broadcaster_2" pkg="tf2_ros" type="static_transform_publisher"
+			args="0 0 0 0 0 0 $(arg robot_namespace)/map $(arg robot_namespace)/odom"/>			
+	</group>
+</launch>

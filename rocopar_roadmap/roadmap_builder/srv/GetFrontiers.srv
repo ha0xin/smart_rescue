@@ -1,0 +1,5 @@
+# Request
+nav_msgs/OccupancyGrid map
+---
+# response to frontiers
+Frontier[] frontiers
