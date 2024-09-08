@@ -7,7 +7,7 @@
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
 
-#include <roadmap_builder/gen_voronoi.h>
+#include <roadmap_builder/GenVoronoi.h>
 
 #include <tuw_voronoi_map/voronoi_path_generator.h>
 #include <tuw_voronoi_graph/voronoi_graph_generator.h>
@@ -32,7 +32,7 @@ namespace tuw_graph
 
         private:
             void globalMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& _map);
-            bool gen_voronoi_callback(roadmap_builder::gen_voronoi::Request &req, roadmap_builder::gen_voronoi::Response &res);
+            bool gen_voronoi_callback(roadmap_builder::GenVoronoi::Request &req, roadmap_builder::GenVoronoi::Response &res);
             void createGraph(const nav_msgs::OccupancyGrid::ConstPtr& _map);
             // void createGraph(const nav_msgs::OccupancyGrid::ConstPtr& _map, size_t _map_hash);
             bool loadGraph(size_t _hash);

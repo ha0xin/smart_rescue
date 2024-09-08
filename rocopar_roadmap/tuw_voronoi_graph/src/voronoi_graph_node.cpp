@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
-#include <roadmap_builder/gen_voronoi.h>
+#include <roadmap_builder/GenVoronoi.h>
 #include <tuw_voronoi_map/voronoi_path_generator.h>
 #include <tuw_voronoi_graph/voronoi_graph_node.h>
 #include <tuw_voronoi_graph/voronoi_graph_generator.h>
@@ -42,62 +42,14 @@ namespace tuw_graph
         n_param_.param<float>("opt_end_segments", endSegmentOptimization_, 0.2);
         //endSegmentOptimization_ = std::min<float>(endSegmentOptimization_, 0.7 * path_length_);
 
-        // subMap_ = n.subscribe("mapx", 1, &VoronoiGeneratorNode::globalMapCallback, this);
-
-        // if(publishVoronoiMapImage_){
-        //     pubVoronoiMapImage_  = n.advertise<nav_msgs::OccupancyGrid>( "map_eroded", 1);
-        // }
-
         pubSegments_ = n.advertise<tuw_multi_robot_msgs::Graph>("segments", 1);
-        // ros::Rate r(loop_rate);
-        // ROS_INFO("Initialization done!");
-
-        // while (ros::ok())
-        // {
-        //     ros::spinOnce();
-        //     publishSegments();
-        //     r.sleep();
-        // }
 
         server_ = n.advertiseService("/gen_voronoi", &VoronoiGeneratorNode::gen_voronoi_callback, this);
 
         ros::spin();
     }
 
-    //定义了一个名为 globalMapCallback 的成员函数，它接收一个指向 nav_msgs::OccupancyGrid 消息的智能指针
-    void VoronoiGeneratorNode::globalMapCallback(const nav_msgs::OccupancyGrid::ConstPtr &_map)
-    {
-        //将地图消息中的数据成员 data 复制到一个 std::vector<signed char> 类型的向量 map 中
-        std::vector<signed char> map = _map->data;
-        //定义一个 std::vector<double> 类型的向量 parameters，用来存储生成 Voronoi 图所需的参数
-        std::vector<double> parameters;
-        //向 parameters 向量中添加地图的原点坐标、分辨率以及其他几个参数，这些参数可能影响 Voronoi 图的生成
-        parameters.push_back(_map->info.origin.position.x);
-        parameters.push_back(_map->info.origin.position.y);
-        parameters.push_back(_map->info.resolution);
-        parameters.push_back(inflation_);
-        parameters.push_back(segment_length_);
-        parameters.push_back(endSegmentOptimization_);
-        parameters.push_back(crossingOptimization_);
-
-        //如果设置了发布 Voronoi 图像，并且 map_ 向量包含数据，则复制接收到的地图消息到 voronoiMapImage_ 并发布
-        if (publishVoronoiMapImage_ && (map_.size > 0))
-        {
-            createGraph(_map);
-            voronoiMapImage_.header = _map->header;
-            voronoiMapImage_.info = _map->info;
-            voronoiMapImage_.data.resize(_map->data.size());
-
-            for (unsigned int i = 0; i < voronoiMapImage_.data.size(); i++)
-            {
-                voronoiMapImage_.data[i] = map_.data[i];
-            }
-            //发布 voronoiMapImage_ 作为 nav_msgs::OccupancyGrid 消息
-            pubVoronoiMapImage_.publish(voronoiMapImage_);
-        }
-    }
-
-    bool VoronoiGeneratorNode::gen_voronoi_callback(roadmap_builder::gen_voronoi::Request &req, roadmap_builder::gen_voronoi::Response &res)
+    bool VoronoiGeneratorNode::gen_voronoi_callback(roadmap_builder::GenVoronoi::Request &req, roadmap_builder::GenVoronoi::Response &res)
     {
         //将地图消息中的数据成员 data 复制到一个 std::vector<signed char> 类型的向量 map 中
         std::vector<signed char> map = req.occupancy_map.data;
