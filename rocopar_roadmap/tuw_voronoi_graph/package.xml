@@ -71,7 +71,7 @@
   <exec_depend>tf</exec_depend>
   <exec_depend>tuw_multi_robot_msgs</exec_depend>
   <exec_depend>dynamic_reconfigure</exec_depend>
-  <!-- <exec_depend>libdxflib-dev</exec_dsepend> -->
+  <!-- <exec_depend>libdxflib-dev</exec_depend> -->
   <exec_depend>roadmap_builder</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->

@@ -1,7 +1,7 @@
 <launch>
 	<!-- arguments -->
-	<!-- <arg name="map_origin_x" default="0.0"/>
-	<arg name="map_origin_y" default="0.0"/> -->
+	<arg name="map_origin_x" default="0.0"/>
+	<arg name="map_origin_y" default="0.0"/>
     <!-- map_merge -->
 	<node name="map_merge" pkg="multirobot_map_merge" 
 		type="map_merge" output="screen" respawn="false" >
@@ -14,7 +14,7 @@
 		<param name="discovery_rate" value="0.05"/>
 		<param name="estimation_rate" value="0.5"/>
 		<param name="estimation_confidence" value="0.5"/>
-		<!-- <param name="map_origin_x" value="$(arg map_origin_x)"/>
-		<param name="map_origin_y" value="$(arg map_origin_y)"/> -->
+		<param name="map_origin_x" value="$(arg map_origin_x)"/>
+		<param name="map_origin_y" value="$(arg map_origin_y)"/>
 	</node>
 </launch>

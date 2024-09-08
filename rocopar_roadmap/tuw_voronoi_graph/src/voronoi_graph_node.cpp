@@ -34,6 +34,7 @@ namespace tuw_graph
         n_param_.param<bool>("publish_voronoi_map_image", publishVoronoiMapImage_, false);
         n_param_.param<double>("map_inflation", inflation_, 0.1); /// [meters]
         n_param_.param<float>("segment_length", segment_length_, 1.0); /// [meters]
+        ROS_INFO_STREAM("map_inflation: " << inflation_);
 
         //设置交叉点优化和末端段优化的默认值，并从参数服务器获取可能的自定义值
         crossingOptimization_ = 0.2;
@@ -41,7 +42,7 @@ namespace tuw_graph
         n_param_.param<float>("opt_end_segments", endSegmentOptimization_, 0.2);
         //endSegmentOptimization_ = std::min<float>(endSegmentOptimization_, 0.7 * path_length_);
 
-        subMap_ = n.subscribe("mapx", 1, &VoronoiGeneratorNode::globalMapCallback, this);
+        // subMap_ = n.subscribe("mapx", 1, &VoronoiGeneratorNode::globalMapCallback, this);
 
         // if(publishVoronoiMapImage_){
         //     pubVoronoiMapImage_  = n.advertise<nav_msgs::OccupancyGrid>( "map_eroded", 1);

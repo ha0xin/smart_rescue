@@ -23,10 +23,10 @@ class FrontierGenerator:
 
         ## ROS parameters setting
         self.distance_obs = rospy.get_param('~dis_obs', 0.5)
-        # self.map_max_x = rospy.get_param('~map_max_x')
-        # self.map_max_y = rospy.get_param('~map_max_y')
-        # self.map_min_x = rospy.get_param('~map_min_x')
-        # self.map_min_y = rospy.get_param('~map_min_y')
+        self.map_max_x = rospy.get_param('~map_max_x')
+        self.map_max_y = rospy.get_param('~map_max_y')
+        self.map_min_x = rospy.get_param('~map_min_x')
+        self.map_min_y = rospy.get_param('~map_min_y')
         # self.robot_id = rospy.get_param('~robot_id', 0)
         # self.robotPrefix = rospy.get_param('~robot_ns', "robot_")
 

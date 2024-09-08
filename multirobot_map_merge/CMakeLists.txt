@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(multi_map_merge)
+project(multirobot_map_merge)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -66,11 +66,11 @@ add_library(combine_grid STATIC
 add_dependencies(combine_grid ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(combine_grid ${OpenCV_LIBRARIES})
 
-add_executable(map_merge_all
+add_executable(map_merge
   src/map_merge.cpp
 )
-add_dependencies(map_merge_all ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(map_merge_all combine_grid ${catkin_LIBRARIES})
+add_dependencies(map_merge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(map_merge combine_grid ${catkin_LIBRARIES})
 
 #############
 ## Install ##
@@ -78,7 +78,7 @@ target_link_libraries(map_merge_all combine_grid ${catkin_LIBRARIES})
 
 # install nodes, installing combine_grids should not be necessary,
 # but lets make catkin_lint happy
-install(TARGETS combine_grid map_merge_all
+install(TARGETS combine_grid map_merge
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

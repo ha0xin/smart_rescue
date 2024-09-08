@@ -1,9 +1,10 @@
 <launch>
-    <!-- <arg name="id" default="0"/> -->
+    <!-- arguments -->
     <arg name="frontier_max_x" default="20"/>
     <arg name="frontier_max_y" default="20"/>
     <arg name="frontier_min_x" default="-20"/>
     <arg name="frontier_min_y" default="-20"/>
+
     <node name="frontiers_generator" pkg="roadmap_builder" type="frontiers_generator.py" output="screen">
         <param name="map_max_x" value="$(arg frontier_max_x)"/>
         <param name="map_max_y" value="$(arg frontier_max_y)"/>
