@@ -8,11 +8,11 @@ speedup 1.000
 # configure the GUI window
 window
 (
-  size [ 1400.00 1400.00 ] # in pixels
+  size [ 1000.00 1000.00 ] # in pixels
 
   # Camera options 
   scale 100                # pixels per meter   
-  center [ 7  7 ]
+  center [ 5  5 ]
   rotate [ 0.000  0.000 ]
 
   # GUI options
