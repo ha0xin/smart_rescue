@@ -57,7 +57,7 @@ class FrontierGenerator:
             self.generate_frontiers()
             frontiers_msg, _ = self.publish_frontiers()
 
-            if frontiers_msg == None:
+            if frontiers_msg is None:
                 return GetFrontiersResponse(None)
             else:
                 return GetFrontiersResponse(frontiers_msg.frontiers)
@@ -118,7 +118,7 @@ class FrontierGenerator:
             else:
                 pass
         else:
-            rospy.logwarn(f'There are no frontiers!')
+            rospy.logwarn('There are no frontiers!')
             return None
 
     def set_map_size_info(self, map_msg):
