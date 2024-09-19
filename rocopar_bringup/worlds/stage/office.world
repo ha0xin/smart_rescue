@@ -115,7 +115,7 @@ define agent position
 )
 
 # Build agent instances
-agent( name "agent_0"  pose [4.0 2.0 0.0 90.0] )
-agent( name "agent_1"  pose [2.0 4.0 0.0 90.0] )
-agent( name "agent_2"  pose [5.0 2.0 0.0 90.0] )
-agent( name "agent_3"  pose [4.5 1.5 0.0 0.0] )
+agent( name "agent_0"  pose [5.0 4.0 0.0 90.0] )
+agent( name "agent_1"  pose [-3.8 5.4 0.0 90.0] )
+agent( name "agent_2"  pose [5.0 0.0 0.0 90.0] )
+agent( name "agent_3"  pose [1.0 -2.0 0.0 0.0] )

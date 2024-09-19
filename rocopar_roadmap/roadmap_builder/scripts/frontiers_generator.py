@@ -32,7 +32,7 @@ class FrontierGenerator:
 
         ## ROS interfaces setting
         # topic = "/"+self.robotPrefix + str(self.robot_id) + '/frontierlist'
-        self.frontiers_pub = rospy.Publisher('/frontiers', FrontierArray, queue_size=1)
+        # self.frontiers_pub = rospy.Publisher('/frontiers', FrontierArray, queue_size=1)
         # topic = "/"+self.robotPrefix + str(self.robot_id) + '/frontier_markers'
         self.centroid_markers_pub = rospy.Publisher('/centroid_markers', MarkerArray, queue_size=10)
         # self.pruned_map_pub = rospy.Publisher('/pruned_map', OccupancyGrid, queue_size=10)

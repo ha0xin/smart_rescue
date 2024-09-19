@@ -51,6 +51,6 @@
 			args="0 0 0 0 0 0 map $(arg robot_namespace)/map"/>
 
 		<node name="static_tf_broadcaster_2" pkg="tf2_ros" type="static_transform_publisher"
-			args="0 0 0 0 0 0 $(arg robot_namespace)/map $(arg robot_namespace)/odom"/>			
+			args="0 0 0 0 0 0 $(arg robot_namespace)/map $(arg robot_namespace)/odom"/>
 	</group>
 </launch>

@@ -25,6 +25,8 @@
 	<!-- map merge parameter-->
 	<arg name="map_origin_x" value="-30"/>
 	<arg name="map_origin_y" value="-30"/>
+	<!-- task_planner_node -->
+	<arg name="robot_num" value="4"/>
 
 	<param name="/use_sim_time" value="true"/>
 
@@ -53,6 +55,11 @@
 	<!-- rviz -->
 	<node name="rviz" pkg="rviz" type="rviz"
 		args="-d $(find rocopar_bringup)/rviz/complete_multi_stage.rviz"/>
+
+	<!-- task_planner_node -->
+	<!-- <include file="$(find rocopar_task_planner)/launch/task_planner.launch">
+        <arg name="robot_num" value="$(arg robot_num)"/>
+    </include> -->
 
 	<!-- ======== Bringup instances of robots ======== -->
 	<!-- begin robot_0 -->
