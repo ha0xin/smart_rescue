@@ -1,3 +1,8 @@
+#！/usr/bin/env python3
+
+import math
+import networkx as nx
+import matplotlib.pyplot as plt
 import rospy
 
 from nav_msgs.msg import OccupancyGrid
@@ -8,9 +13,7 @@ from tuw_multi_robot_msgs.msg import Graph
 from roadmap_builder.srv import GenVoronoi, GenVoronoiRequest
 from roadmap_builder.srv import GetFrontiers, GetFrontiersRequest
 
-import math
-import networkx as nx
-import matplotlib.pyplot as plt
+
 
 
 def create_point_marker(ns, id, point, color, scale):
@@ -119,7 +122,7 @@ class RoadmapBuilderNode():
                 marker = create_line_marker("frontiers", i, edge, color=blue_index, scale=0.05)
                 self.roadmap_pub.publish(marker)
 
-            rospy.sleep(1)
+            rospy.sleep(0.5)
 
     def map_callback(self, msg):
         self.oc_map = msg

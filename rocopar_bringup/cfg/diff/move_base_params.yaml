@@ -11,7 +11,7 @@ clearing_rotation_allowed: true
 oscillation_timeout: 10.0
 oscillation_distance: 0.02
 
-conservative_reset_dist: 3.00 #distance from an obstacle at which it will unstuck itself
+conservative_reset_dist: 0.5 #distance from an obstacle at which it will unstuck itself
 
 # base_global_planner: voronoi_planner/VoronoiPlanner
 # base_global_planner: global_planner/GlobalPlanner
