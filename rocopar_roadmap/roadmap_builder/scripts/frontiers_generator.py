@@ -119,6 +119,7 @@ class FrontierGenerator:
                 pass
         else:
             rospy.logwarn('There are no frontiers!')
+            self.frontier_clusters = dict()
             return None
 
     def set_map_size_info(self, map_msg):

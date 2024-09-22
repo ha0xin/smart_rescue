@@ -48,6 +48,9 @@ class TaskPlannerNode:
 
     def marker_callback(self, marker_array: MarkerArray):
         try:
+            if not marker_array.markers:
+                rospy.logwarn("No markers received")
+                return
             (robot_trans, robot_rot) = self.listener.lookupTransform("map", "robot_0/base_link", rospy.Time(0))
             min_distance = float('inf')
             nearest_marker = None
@@ -70,7 +73,7 @@ class TaskPlannerNode:
                 self.explore()
                 self.marker_sub.unregister() # explore once
 
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+        except Exception as e:
             rospy.logwarn("Transform lookup failed for robot_0/base_link: %s", str(e))
 
     def explore(self):
