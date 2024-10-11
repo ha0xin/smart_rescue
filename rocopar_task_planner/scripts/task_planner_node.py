@@ -26,7 +26,7 @@ class TaskPlannerNode:
     def spin(self):
         try:
             while not rospy.is_shutdown():
-                self.calculate_all_frame_distances()
+                # self.calculate_all_frame_distances()
                 self.rate.sleep()
         except rospy.ROSInterruptException:
             rospy.loginfo("Task planner node shutting down")
@@ -50,6 +50,7 @@ class TaskPlannerNode:
         try:
             if not marker_array.markers:
                 rospy.logwarn("No markers received")
+                self.nearest_marker = None
                 return
             (robot_trans, robot_rot) = self.listener.lookupTransform("map", "robot_0/base_link", rospy.Time(0))
             min_distance = float('inf')
@@ -70,23 +71,43 @@ class TaskPlannerNode:
                 rospy.loginfo("Nearest marker ID: %d, Distance: %.2f meters", nearest_marker.id, min_distance)
                 self.nearest_marker = nearest_marker
 
-                self.explore()
-                self.marker_sub.unregister() # explore once
+                # self.explore()
 
         except Exception as e:
             rospy.logwarn("Transform lookup failed for robot_0/base_link: %s", str(e))
 
     def explore(self):
-        if self.nearest_marker:
+        while self.nearest_marker:
+            current_marker = self.nearest_marker
             goal = PoseStamped()
             goal.header.frame_id = "map"
-            goal.pose = self.nearest_marker.pose
+            goal.pose = current_marker.pose
             goal.pose.position.z = 0
             self.goal_pub.publish(goal)
-            rospy.loginfo("Exploring marker ID: %d", self.nearest_marker.id)
-        else:
-            rospy.logwarn("No nearest marker found")
+            rospy.loginfo("Exploring marker ID: %d", current_marker.id)
+            # Check if the robot has reached the current goal
+            while not rospy.is_shutdown():
+                try:
+                    (robot_trans, robot_rot) = self.listener.lookupTransform("map", "robot_0/base_link", rospy.Time(0))
+                    distance = math.sqrt(
+                        (current_marker.pose.position.x - robot_trans[0]) ** 2 +
+                        (current_marker.pose.position.y - robot_trans[1]) ** 2 +
+                        (current_marker.pose.position.z - robot_trans[2]) ** 2
+                    )
+                    if distance < 0.5:  # Threshold distance to consider the goal reached
+                        rospy.loginfo("Reached marker ID: %d", current_marker.id)
+                        break
+                except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+                    rospy.logwarn("Transform lookup failed for robot_0/base_link: %s", str(e))
+
+            # wait for 2 seconds which is the frequency of centroid_markers topic
+            rospy.sleep(2)
+            # After reaching the goal, continue exploring the next nearest marker
+        rospy.logwarn("No nearest marker found")
 
 if __name__ == "__main__":
     task_planner = TaskPlannerNode()
-    task_planner.spin()
+    # task_planner.spin()
+    # wait to find the nearest marker
+    rospy.sleep(2)
+    task_planner.explore()
