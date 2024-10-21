@@ -3,7 +3,7 @@
 
 	<!-- simulator parameter -->
 	<arg name="model" value="diff" doc="[diff, omni, car]"/>
-    <arg name="env_map" value="office" doc="[office,...]"/>
+    <arg name="env_map" value="maze_office" doc="[office,...]"/>
 	<arg name="obstacle_height" value="1.5"/>
 	<!-- planner parameter -->
 	<arg name="time_delay" value="200.0"/>
