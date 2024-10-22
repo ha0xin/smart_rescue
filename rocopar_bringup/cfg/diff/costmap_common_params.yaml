@@ -3,7 +3,7 @@
 #---(in meters)---
 
 footprint: [[-0.05, -0.05], [-0.05, 0.05], [0.05, 0.05], [0.05, -0.05]]
-footprint_padding: 0.02
+footprint_padding: 0.0
 
 transform_tolerance: 0.2
 map_type: costmap
