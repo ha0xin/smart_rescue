@@ -6,11 +6,11 @@
 
 
 ## Todos
+1. 写一个分层的运动规划器，分为global_planner 和local_planner
+2. global_planner: 订阅roadmap话题，将其转化为networkx中的Graph，然后可以直接在上面用dijkstra方法得到最短路径
+3. local_planner: 将豪泽的规划器引入进来，不断地将global path中的点依次发布
 
-
-1. 在动态构建的roadmap中不断在线生成任务分配方案；
-
-2. 在迷宫or洞穴场景中边探索边救援；
+clone RoCoPAR里面最新的内容
 
 
 
