@@ -83,7 +83,11 @@ class RoadmapBuilderNode():
         # Variables
         self.occup_map = OccupancyGrid()
         self.filter_map = OccupancyGrid()
-        self.roadmap = RoadMap()
+        self._voronoi_map_msg = Graph()
+        self._roadmap_msg = RoadMap()
+        self._roadmap_vis_msg = MarkerArray()
+
+        self.roadmap = nx.Graph()
         self.map_topic = rospy.get_param("~map_topic", "/map")
         # ROS interfaces
         rospy.Subscriber(self.map_topic, OccupancyGrid, self.map_callback, queue_size=1)
@@ -100,27 +104,34 @@ class RoadmapBuilderNode():
         rospy.wait_for_service("/get_frontiers")
 
         while not rospy.is_shutdown():
-            rospy.spin()
+            self.voronoi_pub.publish(self._voronoi_map_msg)
+            self.roadmap_pub.publish(self._roadmap_msg)
+            self.roadmap_vis_pub.publish(self._roadmap_vis_msg)
+            rospy.sleep(1)
+
 
     def map_callback(self, msg: OccupancyGrid):
-        rospy.loginfo("Received the occupancy map.")
         if msg.data == self.occup_map.data:
-            rospy.loginfo("The map is not updated.")
+            rospy.loginfo("Roadmap Builder: map not changed")
             return
+        else:
+            rospy.loginfo("Roadmap Builder: occupancy map changed")
         self.occup_map = msg
         self.filter_map = self.filter_occup_map(self.occup_map)
         
         voronoi_res = self.voronoi_client.call(GenVoronoiRequest(self.filter_map))
-        self.voronoi_pub.publish(voronoi_res.voronoi_map)
+        self._voronoi_map_msg = voronoi_res.voronoi_map
+        # self.voronoi_pub.publish(voronoi_res.voronoi_map)
 
         frontier_res = self.frontier_client.call(GetFrontiersRequest(self.filter_map))
         # Process of voronoi map
         self.roadmap = self.build_roadmap(voronoi_res.voronoi_map, frontier_res.frontiers)
-        roadmap_msg = self.roadmap2RoadMap(self.roadmap)
-        self.roadmap_pub.publish(roadmap_msg)
+        self._roadmap_msg = self.roadmap2RoadMap(self.roadmap)
+        # self.roadmap_pub.publish(roadmap_msg)
 
-        roadmap_vis_msg = self.roadmap2MarkerArray(self.roadmap)
-        self.roadmap_vis_pub.publish(roadmap_vis_msg)
+        self._roadmap_vis_msg = self.roadmap2MarkerArray(self.roadmap)
+        # self.roadmap_vis_pub.publish(roadmap_vis_msg)
+        rospy.loginfo("Roadmap Builder: map callback done. seq: %s", msg.header.seq)
 
     def filter_occup_map(self, occup_map, num=8):
         """
@@ -184,7 +195,7 @@ class RoadmapBuilderNode():
 
         return roadmap
 
-    def roadmap2MarkerArray(self, roadmap):
+    def roadmap2MarkerArray(self, roadmap: nx.Graph):
         """
         Transfer networkx.Graph to MarkerArray message.
         """
@@ -208,29 +219,32 @@ class RoadmapBuilderNode():
             marker_array.markers.append(marker)
         return marker_array
 
-    def roadmap2RoadMap(self, roadmap):
+    def roadmap2RoadMap(self, roadmap: nx.Graph):
         """
         Transfer networkx.Graph to RoadMap message.
         """
         roadmap_msg = RoadMap()
         roadmap_msg.stamp = rospy.Time.now()
+
         for node in roadmap.nodes:
             node_msg = Node()
             node_msg.point.x = node[0]
             node_msg.point.y = node[1]
             node_msg.label = roadmap.nodes[node]['label']
             roadmap_msg.nodes.append(node_msg)
+
         for edge in roadmap.edges:
             edge_msg = Edge()
             edge_msg.source.x = edge[0][0]
-            edge_msg.source.x = edge[0][1]
-            edge_msg.target.y = edge[1][0]
+            edge_msg.source.y = edge[0][1]
+            edge_msg.target.x = edge[1][0]
             edge_msg.target.y = edge[1][1]
             edge_msg.cost = roadmap.edges[edge]['cost']
             roadmap_msg.edges.append(edge_msg)
+
         return roadmap_msg
 
-    def find_nearest_node(self, roadmap, point):
+    def find_nearest_node(self, roadmap: nx.Graph, point: Point):
         """
         Get the nearest node in roadmap to given point。
         ----------
@@ -252,7 +266,7 @@ class RoadmapBuilderNode():
         
         return nodes_[min_index_], min_dis_
 
-    def display_roadmap(self, roadmap):
+    def display_roadmap(self, roadmap: nx.Graph):
         option = {
             "with_labels": True, 
             "font_weight": 'bold', 
