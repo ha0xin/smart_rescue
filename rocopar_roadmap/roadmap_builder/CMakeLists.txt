@@ -56,6 +56,9 @@ add_message_files(
   FILES
   Frontier.msg
   FrontierArray.msg
+  Node.msg
+  Edge.msg
+  RoadMap.msg
 )
 
 ## Generate services in the 'srv' folder
