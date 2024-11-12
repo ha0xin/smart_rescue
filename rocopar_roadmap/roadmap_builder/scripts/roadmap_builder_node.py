@@ -98,29 +98,29 @@ class RoadmapBuilderNode():
         self.occup_map = rospy.wait_for_message(self.map_topic, OccupancyGrid)
         rospy.wait_for_service("/gen_voronoi")
         rospy.wait_for_service("/get_frontiers")
-        # The core loop
+
         while not rospy.is_shutdown():
-            # self.filter_map_pub.publish(self.filter_map)
-            # rospy.loginfo("Pull a request for voronoi map.")
-            voronoi_res = self.voronoi_client.call(GenVoronoiRequest(self.filter_map))
-            self.voronoi_pub.publish(voronoi_res.voronoi_map)
-            # rospy.loginfo("Pull a request for frontier points.")
-            frontier_res = self.frontier_client.call(GetFrontiersRequest(self.filter_map))
-            # Process of voronoi map
-            self.roadmap = self.build_roadmap(voronoi_res.voronoi_map, frontier_res.frontiers)
-            roadmap_msg = self.roadmap2RoadMap(self.roadmap)
-            self.roadmap_pub.publish(roadmap_msg)
+            rospy.spin()
 
-            roadmap_vis_msg = self.roadmap2MarkerArray(self.roadmap)
-            self.roadmap_vis_pub.publish(roadmap_vis_msg)
-
-            ## publish nodes
-            rospy.sleep(0.2)
-
-    def map_callback(self, msg):
+    def map_callback(self, msg: OccupancyGrid):
+        rospy.loginfo("Received the occupancy map.")
+        if msg.data == self.occup_map.data:
+            rospy.loginfo("The map is not updated.")
+            return
         self.occup_map = msg
         self.filter_map = self.filter_occup_map(self.occup_map)
-        return self.filter_map
+        
+        voronoi_res = self.voronoi_client.call(GenVoronoiRequest(self.filter_map))
+        self.voronoi_pub.publish(voronoi_res.voronoi_map)
+
+        frontier_res = self.frontier_client.call(GetFrontiersRequest(self.filter_map))
+        # Process of voronoi map
+        self.roadmap = self.build_roadmap(voronoi_res.voronoi_map, frontier_res.frontiers)
+        roadmap_msg = self.roadmap2RoadMap(self.roadmap)
+        self.roadmap_pub.publish(roadmap_msg)
+
+        roadmap_vis_msg = self.roadmap2MarkerArray(self.roadmap)
+        self.roadmap_vis_pub.publish(roadmap_vis_msg)
 
     def filter_occup_map(self, occup_map, num=8):
         """
