@@ -109,28 +109,45 @@ class RoadmapBuilderNode():
             self.roadmap_vis_pub.publish(self._roadmap_vis_msg)
             rospy.sleep(1)
 
-
     def map_callback(self, msg: OccupancyGrid):
+        start_time = time.time()
+        
         if msg.data == self.occup_map.data:
             rospy.loginfo("Roadmap Builder: map not changed")
             return
         else:
             rospy.loginfo("Roadmap Builder: occupancy map changed")
         self.occup_map = msg
-        self.filter_map = self.filter_occup_map(self.occup_map)
         
+        filter_start_time = time.time()
+        self.filter_map = self.filter_occup_map(self.occup_map)
+        filter_end_time = time.time()
+        rospy.loginfo("Filtering occupancy map took: %.4f seconds", filter_end_time - filter_start_time)
+        
+        voronoi_start_time = time.time()
         voronoi_res = self.voronoi_client.call(GenVoronoiRequest(self.filter_map))
+        voronoi_end_time = time.time()
         self._voronoi_map_msg = voronoi_res.voronoi_map
-        # self.voronoi_pub.publish(voronoi_res.voronoi_map)
-
+        rospy.loginfo("Generating Voronoi map took: %.4f seconds", voronoi_end_time - voronoi_start_time)
+        
+        frontier_start_time = time.time()
         frontier_res = self.frontier_client.call(GetFrontiersRequest(self.filter_map))
-        # Process of voronoi map
+        frontier_end_time = time.time()
+        rospy.loginfo("Getting frontiers took: %.4f seconds", frontier_end_time - frontier_start_time)
+        
+        roadmap_start_time = time.time()
         self.roadmap = self.build_roadmap(voronoi_res.voronoi_map, frontier_res.frontiers)
+        roadmap_end_time = time.time()
         self._roadmap_msg = self.roadmap2RoadMap(self.roadmap)
-        # self.roadmap_pub.publish(roadmap_msg)
-
+        rospy.loginfo("Building roadmap took: %.4f seconds", roadmap_end_time - roadmap_start_time)
+        
+        marker_array_start_time = time.time()
         self._roadmap_vis_msg = self.roadmap2MarkerArray(self.roadmap)
-        # self.roadmap_vis_pub.publish(roadmap_vis_msg)
+        marker_array_end_time = time.time()
+        rospy.loginfo("Creating MarkerArray took: %.4f seconds", marker_array_end_time - marker_array_start_time)
+        
+        end_time = time.time()
+        rospy.loginfo("Total map callback time: %.4f seconds", end_time - start_time)
         rospy.loginfo("Roadmap Builder: map callback done. seq: %s", msg.header.seq)
 
     def filter_occup_map(self, occup_map, num=8):
