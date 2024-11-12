@@ -1,20 +1,40 @@
-#！/usr/bin/env python3
-
+#!/usr/bin/env python3
+import copy
+import time
 import math
+import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-import rospy
+from itertools import combinations
+from scipy.spatial import Voronoi, Delaunay
 
+import rospy
 from nav_msgs.msg import OccupancyGrid
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import Point, Quaternion
 from tuw_multi_robot_msgs.msg import Graph
 
+from roadmap_builder.msg import Node, Edge, RoadMap
 from roadmap_builder.srv import GenVoronoi, GenVoronoiRequest
 from roadmap_builder.srv import GetFrontiers, GetFrontiersRequest
 
 
+def distance(ps, pt):
+    return round(math.sqrt((pt[0]-ps[0])**2 + (pt[1]-ps[0])**2), 3)
 
+def point_line_distance(point, line):
+    point_p = np.array(point)
+    point_a = np.array(line[0])
+    point_b = np.array(line[1])
+    vector_ap = point_p - point_a
+    vector_ab = point_b - point_a
+    proj_length = np.dot(vector_ap, vector_ab)/np.dot(vector_ab, vector_ab)
+    if proj_length < 0:
+        return np.linalg.norm(vector_ap)
+    elif proj_length > 1:
+        return np.linalg.norm(point_p - point_b)
+    else:
+        return np.abs(np.cross(vector_ap, vector_ab)) / np.linalg.norm(vector_ab)
 
 def create_point_marker(ns, id, point, color, scale):
     marker = Marker()
@@ -35,7 +55,7 @@ def create_point_marker(ns, id, point, color, scale):
     marker.color.r = color[1]
     marker.color.g = color[2]
     marker.color.b = color[3]
-    marker.text = 'yes'
+    # marker.text = 'yes'
     return marker
 
 def create_line_marker(ns, id, edge, color, scale):
@@ -60,104 +80,165 @@ def create_line_marker(ns, id, edge, color, scale):
 class RoadmapBuilderNode():
     def __init__(self):
         rospy.init_node("roadmap_builder_node")
-
         # Variables
-        self.oc_map = OccupancyGrid()
+        self.occup_map = OccupancyGrid()
+        self.filter_map = OccupancyGrid()
+        self.roadmap = RoadMap()
         self.map_topic = rospy.get_param("~map_topic", "/map")
-
         # ROS interfaces
         rospy.Subscriber(self.map_topic, OccupancyGrid, self.map_callback, queue_size=1)
+        self.voronoi_client = rospy.ServiceProxy("/gen_voronoi", GenVoronoi)
+        self.frontier_client = rospy.ServiceProxy("/get_frontiers", GetFrontiers)
+        self.filter_map_pub = rospy.Publisher('/filter_map', OccupancyGrid, queue_size=1)
+        self.voronoi_pub = rospy.Publisher("/voronoi_map", Graph, queue_size=1)
+        self.roadmap_vis_pub = rospy.Publisher('/roadmap_vis', MarkerArray, queue_size=10)
+        self.roadmap_pub = rospy.Publisher('/roadmap', RoadMap, queue_size=10)
 
-        self.voronoi_gen_client = rospy.ServiceProxy("/gen_voronoi", GenVoronoi)
-        self.frontier_get_client = rospy.ServiceProxy("/get_frontiers", GetFrontiers)
-
-        self.voronoi_pub = rospy.Publisher("voronoi_map", Graph, queue_size=1)
-        self.roadmap_pub = rospy.Publisher('roadmap_vis', Marker, queue_size=100)
-
-        # Wait for Ready
-        rospy.loginfo("Waiting for publishers and servers available.")
-        self.oc_map = rospy.wait_for_message(self.map_topic, OccupancyGrid)
+        # Waiting for servives
+        self.occup_map = rospy.wait_for_message(self.map_topic, OccupancyGrid)
         rospy.wait_for_service("/gen_voronoi")
         rospy.wait_for_service("/get_frontiers")
-        rospy.loginfo("Publishers and servers ready.")
-
+        # The core loop
         while not rospy.is_shutdown():
-            # Pull a request for voronoi map
-            rospy.loginfo("Pull a request for voronoi map.")
-            voronoi_res = self.voronoi_gen_client.call(GenVoronoiRequest(self.oc_map))
-
-            # Process of voronoi map
-            roadmap, _ = self.build_roadmap(voronoi_res.voronoi_map)
-            
-            # Pull a request for frontier points
-            rospy.loginfo("Pull a request for frontier points.")
-            frontier_res = self.frontier_get_client.call(GetFrontiersRequest(self.oc_map))
+            # self.filter_map_pub.publish(self.filter_map)
+            # rospy.loginfo("Pull a request for voronoi map.")
+            voronoi_res = self.voronoi_client.call(GenVoronoiRequest(self.filter_map))
             self.voronoi_pub.publish(voronoi_res.voronoi_map)
+            # rospy.loginfo("Pull a request for frontier points.")
+            frontier_res = self.frontier_client.call(GetFrontiersRequest(self.filter_map))
+            # Process of voronoi map
+            self.roadmap = self.build_roadmap(voronoi_res.voronoi_map, frontier_res.frontiers)
+            roadmap_msg = self.roadmap2RoadMap(self.roadmap)
+            self.roadmap_pub.publish(roadmap_msg)
 
-            # Add frontiers into roadmap
-            for frontier_ in frontier_res.frontiers:
-                centroid_ = frontier_.centroid
-                near_node, _ = self.get_near_node(roadmap, centroid_)
-                roadmap.add_edge((centroid_.x, centroid_.y), 
-                                (near_node[0], near_node[1]))
-                roadmap.nodes[(centroid_.x, centroid_.y)]["node_type"] = "frontier"
-                print(near_node)
+            roadmap_vis_msg = self.roadmap2MarkerArray(self.roadmap)
+            self.roadmap_vis_pub.publish(roadmap_vis_msg)
 
-            # Display roadmap
-            # self.display_roadmap(roadmap)
-            ## publish the visualization of the roadmap
             ## publish nodes
-            for i, node in enumerate(roadmap.nodes()):
-                if roadmap.nodes[node]["node_type"] == "point":
-                    blue_index = [1.0, 0.0, 0.0, 1.0]
-                    marker = create_point_marker("nodes", i, node, color=blue_index, scale=0.1)
-                elif roadmap.nodes[node]["node_type"] == "frontier":
-                    red_index = [1.0, 1.0, 0.0, 0.0]
-                    marker = create_point_marker("frontiers", i, node, color=red_index, scale=0.1)
-                self.roadmap_pub.publish(marker)
-            
-            ## publish edges
-            for i, edge in enumerate(roadmap.edges()):
-                blue_index = [1.0, 0.0, 0.0, 1.0]
-                marker = create_line_marker("frontiers", i, edge, color=blue_index, scale=0.05)
-                self.roadmap_pub.publish(marker)
-
-            rospy.sleep(0.5)
+            rospy.sleep(0.2)
 
     def map_callback(self, msg):
-        self.oc_map = msg
+        self.occup_map = msg
+        self.filter_map = self.filter_occup_map(self.occup_map)
+        return self.filter_map
 
-    def build_roadmap(self, v_map):
-        origin_ = v_map.origin.position  # Type: geometery_msgs/Point
+    def filter_occup_map(self, occup_map, num=8):
+        """
+        Filter the occupancy map with sense noise.
+        """
+        filter_map = copy.deepcopy(occup_map)
+        # res = occup_map.info.resolution
+        width = filter_map.info.width
+        height = filter_map.info.height
+        for x in range(width):
+            for y in range(height):
+                id = y*width + x
+                value = filter_map.data[id]
+                if filter_map.data[id] == -1:
+                    for nx, ny in self.neighbors((x,y), num):
+                        if nx in range(width) and ny in range(height):
+                            nd = ny*width + nx
+                            filter_map.data[nd] == 0  
+                            value += filter_map.data[nd]
+                    average = value/num
+                    if average > -8:
+                        filter_map.data[id] == 0 
+        return filter_map
 
-        roadmap_ = nx.Graph()
+    def neighbors(self, node, num=8):
+        """
+        Get neighbors of the node.
+        """
+        neighbors_edge = [
+            (1, 0), (0, 1), (-1, 0), (0, -1),
+            (1, 1), (1, -1), (-1, 1), (-1, -1),
+        ]
+        neighbors = []
+        for neigh in neighbors_edge:
+            neighbors.append((node[0]+neigh[0], node[1]+neigh[1]))
+        return neighbors
 
-        # Add edges and nodes
-        for seg in v_map.vertices:
-            point_f = (round(seg.path[0].x + origin_.x, 2), round(seg.path[0].y + origin_.y, 2))
-            point_t = (round(seg.path[-1].x + origin_.x, 2), round(seg.path[-1].y + origin_.y, 2))
-            roadmap_.add_edge(point_f, point_t)
-            roadmap_.nodes[point_f]["node_type"] = "point"
-            roadmap_.nodes[point_t]["node_type"] = "point"
-        
-        # Cut broken branch
-        # before_cut_ = roadmap_.number_of_nodes()
-        # self.display_roadmap(roadmap_)
-        roadmap_ = roadmap_.subgraph(max(nx.connected_components(roadmap_), key=len))
-        roadmap_ = nx.Graph(roadmap_)
-        # after_cut_ = roadmap_.number_of_nodes()
-        # self.display_roadmap(roadmap_)
-        # print("before cut: %d, after cut: %d"%(before_cut_,after_cut_))
-        return roadmap_, origin_
+    def build_roadmap(self, voronoi, frontiers, safe_dist=2):
+        """
+        Build roadmap dduring the map exploration.
+        """
+        roadmap = nx.Graph()
+        origin_pos = voronoi.origin.position  # Type: geometery_msgs/Point
+        # Add edges and nodes from Voronoi Diagram
+        for segment in voronoi.vertices:
+            point_s = ( round(segment.path[0].x + origin_pos.x, 2),
+                        round(segment.path[0].y + origin_pos.y, 2))
+            point_t = ( round(segment.path[-1].x + origin_pos.x, 2),
+                        round(segment.path[-1].y + origin_pos.y, 2))
+            roadmap.add_node(point_s, label='vertex')
+            roadmap.add_node(point_t, label='vertex')
+            roadmap.add_edge(point_s, point_t, cost=distance(point_s, point_t))
 
-    def get_near_node(self, roadmap, point):
-        """get the nearest node in roadmap to given point
+        # Add frontiers into roadmap
+        for frontier_ in frontiers:
+            centroid_ = frontier_.centroid
+            centroid_node = (round(centroid_.x, 2), round(centroid_.y, 2))
+            node, _ = self.find_nearest_node(roadmap, centroid_)
+            roadmap.add_node(centroid_node, label='frontier')
+            roadmap.add_edge(centroid_node, node, cost=distance(centroid_node, node))
 
-        Args:
+        return roadmap
+
+    def roadmap2MarkerArray(self, roadmap):
+        """
+        Transfer networkx.Graph to MarkerArray message.
+        """
+        marker_array = MarkerArray()
+        for i, node in enumerate(roadmap.nodes()):
+            if roadmap.nodes[node]['label'] == 'vertex':
+                blue_index = [1.0, 0.0, 0.0, 1.0]
+                marker = create_point_marker('vertex', i, node,
+                                            color=blue_index, scale=0.1)
+                marker_array.markers.append(marker)
+            if roadmap.nodes[node]['label'] == 'frontier':
+                red_index = [1.0, 1.0, 0.0, 0.0]
+                marker = create_point_marker('frontier', i, node,
+                                            color=red_index, scale=0.1)
+                marker_array.markers.append(marker)            
+        ## publish edges
+        for i, edge in enumerate(roadmap.edges()):
+            blue_index = [1.0, 0.0, 0.0, 1.0]
+            marker = create_line_marker('edge', i, edge,
+                                        color=blue_index, scale=0.02)
+            marker_array.markers.append(marker)
+        return marker_array
+
+    def roadmap2RoadMap(self, roadmap):
+        """
+        Transfer networkx.Graph to RoadMap message.
+        """
+        roadmap_msg = RoadMap()
+        roadmap_msg.stamp = rospy.Time.now()
+        for node in roadmap.nodes:
+            node_msg = Node()
+            node_msg.point.x = node[0]
+            node_msg.point.y = node[1]
+            node_msg.label = roadmap.nodes[node]['label']
+            roadmap_msg.nodes.append(node_msg)
+        for edge in roadmap.edges:
+            edge_msg = Edge()
+            edge_msg.source.x = edge[0][0]
+            edge_msg.source.x = edge[0][1]
+            edge_msg.target.y = edge[1][0]
+            edge_msg.target.y = edge[1][1]
+            edge_msg.cost = roadmap.edges[edge]['cost']
+            roadmap_msg.edges.append(edge_msg)
+        return roadmap_msg
+
+    def find_nearest_node(self, roadmap, point):
+        """
+        Get the nearest node in roadmap to given point。
+        ----------
+        Paramaters:
             roadmap (networkx.Graph): roadmap in networkx.Graph form
             point (geometery/Point): the given point
         
-        Return:
+        Returns:
             ((near_point_x, near_point_y), min_dis)
         """
         nodes_ = list(roadmap.nodes)
@@ -175,13 +256,15 @@ class RoadmapBuilderNode():
         option = {
             "with_labels": True, 
             "font_weight": 'bold', 
-            "node_color": ["blue" if roadmap.nodes[n]["node_type"]=="raw" else "red" for n in roadmap.nodes],
+            "node_color": ["blue" if roadmap.nodes[n]['label']=="raw" else "red" for n in roadmap.nodes],
             "pos": {n: n for n in list(roadmap.nodes)}
             }
         nx.draw(roadmap, **option)
         plt.show()
 
 
-
 if __name__ == "__main__":
-    rbn = RoadmapBuilderNode()
+    try:
+        rbn = RoadmapBuilderNode()
+    except rospy.ROSInterruptException:
+        pass
