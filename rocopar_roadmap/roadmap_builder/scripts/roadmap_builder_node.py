@@ -90,7 +90,8 @@ class RoadmapBuilderNode():
         self.roadmap = nx.Graph()
         self.map_topic = rospy.get_param("~map_topic", "/map")
         # ROS interfaces
-        rospy.Subscriber(self.map_topic, OccupancyGrid, self.map_callback, queue_size=1)
+        # why buff_size=2**24? https://stackoverflow.com/questions/26415699/ros-subscriber-not-up-to-date
+        rospy.Subscriber(self.map_topic, OccupancyGrid, self.map_callback, queue_size=1, buff_size=2**24)
         self.voronoi_client = rospy.ServiceProxy("/gen_voronoi", GenVoronoi)
         self.frontier_client = rospy.ServiceProxy("/get_frontiers", GetFrontiers)
         self.filter_map_pub = rospy.Publisher('/filter_map', OccupancyGrid, queue_size=1)
