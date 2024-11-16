@@ -1,0 +1,27 @@
+<launch>
+    <!-- Arguments -->
+    <arg name="robot_namespace" default="" />
+    <arg name="model" default="diff" doc="model type [diff, omni, car]" />
+
+    <!-- Move Base Flex -->
+     <!-- https://github.com/naturerobots/mbf_docs/blob/master/docs/tutorials/beginner/parameters/mbf_parameters.md -->
+    <node name="move_base_flex" pkg="mbf_costmap_nav" type="mbf_costmap_nav" required="true" output="screen">
+        <rosparam file="$(find rocopar_navigation)/param/$(arg model)/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find rocopar_navigation)/param/$(arg model)/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find rocopar_navigation)/param/$(arg model)/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find rocopar_navigation)/param/$(arg model)/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find rocopar_navigation)/param/$(arg model)/dwa_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find rocopar_navigation)/param/$(arg model)/move_base_flex.yaml" command="load" />
+
+        <param name="robot_frame" value="$(arg robot_namespace)/base_link" />
+        <!-- <param name="map_frame" value="map" /> -->
+        <param name="global_costmap/global_frame" value="$(arg robot_namespace)/map"/>
+		<param name="global_costmap/robot_base_frame" value="$(arg robot_namespace)/base_link"/>
+		<param name="local_costmap/global_frame" value="$(arg robot_namespace)/odom"/>
+		<param name="local_costmap/robot_base_frame" value="$(arg robot_namespace)/base_link"/>
+    </node>
+
+    <node name="move_base_legacy_relay" pkg="mbf_costmap_nav" type="move_base_legacy_relay.py">
+        <rosparam file="$(find rocopar_navigation)/param/$(arg model)/default_planner.yaml" command="load" />
+    </node>
+</launch>
