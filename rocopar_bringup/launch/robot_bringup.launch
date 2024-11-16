@@ -14,8 +14,6 @@
 	<arg name="ymax" default="20"/>
     <arg name="slam_method" default="slam_gmapping" doc="[slam_gmapping, slam_toolbox, cartographer]"/>
 	<arg name="model" default="diff" doc="[diff, omni, car]"/>
-	<!-- <arg name="map_origin_x" default="0.0"/>
-	<arg name="map_origin_y" default="0.0"/> -->
 
 	<!-- begin a robot instance-->
 	<group ns="$(arg robot_namespace)">
@@ -26,12 +24,11 @@
         <param name="map_merge/init_pose_yaw" value="$(arg init_pose_yaw)"/>
 
 		<!-- move_base -->
-		<include file="$(find rocopar_bringup)/launch/navigation/move_base.launch">
+		<include file="$(find rocopar_navigation)/launch/move_base_flex.launch">
 			<arg name="robot_namespace" value="$(arg robot_namespace)"/>
 			<arg name="model" value="$(arg model)"/>
-			<arg name="map_topic" value="map"/>
-			<arg name="scan_topic" value="base_scan"/>
-			<!-- <arg name="base_global_planner" default="voronoi_planner/VoronoiPlanner"/> -->
+			<!-- <arg name="map_topic" value="map"/>
+			<arg name="scan_topic" value="base_scan"/> -->
 		</include>
 
 		<!-- slam_method -->

@@ -1,8 +1,11 @@
 #!/usr/bin/env python
+import actionlib
 import matplotlib.pyplot as plt
 import networkx as nx
 import rospy
+import tf
 import tf2_ros
+import mbf_msgs.msg as mbf_msgs
 from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 from nav_msgs.msg import Path
 from roadmap_builder.msg import Edge, Node, RoadMap
@@ -21,15 +24,21 @@ class GlobalMotionPlanner:
         )
 
         rospy.Subscriber(
-            "move_base_simple/goal", PoseStamped, self.goal_callback, queue_size=1
+            "motion_planner/goal", PoseStamped, self.goal_callback, queue_size=1
         )
         # publishers
-        self.path_vis_pub = rospy.Publisher(
+        self.path_pub = rospy.Publisher(
             "motion_planner/global/path_vis", Path, queue_size=1
         )
         # tf2
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
+        # action client
+        self.exe_path_client = actionlib.SimpleActionClient(
+            "move_base_flex/exe_path", mbf_msgs.ExePathAction
+        )
+        self.exe_path_client.wait_for_server(rospy.Duration(10))
+        rospy.loginfo("Connected to Move Base Flex ExePath server!")
 
         while not rospy.is_shutdown():
             rospy.spin()
@@ -127,24 +136,37 @@ class GlobalMotionPlanner:
 
         start_pose = PoseStamped()
         start_pose.header.frame_id = "map"
+        start_pose.header.stamp = rospy.Time.now()
         start_pose.pose.position.x = start_node.point.x
         start_pose.pose.position.y = start_node.point.y
+        start_pose.pose.orientation.w = 1
         path.poses.append(start_pose)
 
         for point in point_list:
             pose = PoseStamped()
             pose.header.frame_id = "map"
+            pose.header.stamp = rospy.Time.now()
             pose.pose.position.x = point[0]
             pose.pose.position.y = point[1]
+            pose.pose.orientation.w = 1
             path.poses.append(pose)
 
         end_pose = PoseStamped()
         end_pose.header.frame_id = "map"
+        end_pose.header.stamp = rospy.Time.now()
         end_pose.pose.position.x = end_node.point.x
         end_pose.pose.position.y = end_node.point.y
+        end_pose.pose.orientation.w = 1
         path.poses.append(end_pose)
 
-        self.path_vis_pub.publish(path)
+        self.path_pub.publish(path)
+        goal = mbf_msgs.ExePathGoal()
+        goal.path = path
+        goal.tolerance_from_action = True
+        goal.dist_tolerance = 0.5
+        goal.angle_tolerance = 3.14/18
+        self.exe_path_client.send_goal(goal)
+
 
     def interpolate(self, path: list) -> list:
         pass
