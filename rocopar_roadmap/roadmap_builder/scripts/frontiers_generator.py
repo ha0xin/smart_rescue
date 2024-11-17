@@ -39,7 +39,6 @@ class FrontierGenerator:
         # topic = "/"+self.robotPrefix + str(self.robot_id) + '/move_base/global_costmap/costmap'
         # rospy.Subscriber(topic, OccupancyGrid, self.map_callback)
 
-
         while not rospy.is_shutdown():
             service = '/get_frontiers'
             # service = "/"+self.robotPrefix + str(self.robot_id) + '/get_frontiers'
@@ -65,10 +64,9 @@ class FrontierGenerator:
         except Exception as e:
             rospy.logerr("Service error: %s", str(e))
 
-
-    #=======================================
-    ## Frontiers generation and clustering
-    #=======================================
+    ##=======================================
+    # Frontiers generation and clustering
+    ##=======================================
     def generate_frontiers(self, method='mean_shift', expand=10, frontier_search=False):
         """
         Generate frontiers according to the occupancy map,

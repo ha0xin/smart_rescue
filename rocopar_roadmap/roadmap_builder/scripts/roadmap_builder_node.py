@@ -20,7 +20,7 @@ from roadmap_builder.srv import GetFrontiers, GetFrontiersRequest
 
 
 def distance(ps, pt):
-    return round(math.sqrt((pt[0]-ps[0])**2 + (pt[1]-ps[0])**2), 3)
+    return round(math.sqrt((pt[0]-ps[0])**2 + (pt[1]-ps[1])**2), 3)
 
 def point_line_distance(point, line):
     point_p = np.array(point)
@@ -89,6 +89,7 @@ class RoadmapBuilderNode():
 
         self.roadmap = nx.Graph()
         self.map_topic = rospy.get_param("~map_topic", "/map")
+        self.segment_length = rospy.get_param("~segment_length", 1.0)
         # ROS interfaces
         # why buff_size=2**24? https://stackoverflow.com/questions/26415699/ros-subscriber-not-up-to-date
         rospy.Subscriber(self.map_topic, OccupancyGrid, self.map_callback, queue_size=1, buff_size=2**24)
@@ -109,7 +110,6 @@ class RoadmapBuilderNode():
             self.roadmap_pub.publish(self._roadmap_msg)
             self.roadmap_vis_pub.publish(self._roadmap_vis_msg)
             rospy.sleep(1)
-
 
     # def map_callback(self, msg: OccupancyGrid):
     #     if msg.data == self.occup_map.data:
@@ -162,6 +162,7 @@ class RoadmapBuilderNode():
         rospy.loginfo("Getting frontiers took: %.4f seconds", frontier_end_time - frontier_start_time)
         
         roadmap_start_time = time.time()
+        self.roadmap = nx.Graph()
         self.roadmap = self.build_roadmap(voronoi_res.voronoi_map, frontier_res.frontiers)
         roadmap_end_time = time.time()
         self._roadmap_msg = self.roadmap2RoadMap(self.roadmap)
@@ -192,7 +193,7 @@ class RoadmapBuilderNode():
                     for nx, ny in self.neighbors((x,y), num):
                         if nx in range(width) and ny in range(height):
                             nd = ny*width + nx
-                            filter_map.data[nd] == 0  
+                            filter_map.data[nd] = 0  
                             value += filter_map.data[nd]
                     average = value/num
                     if average > -8:
@@ -214,29 +215,66 @@ class RoadmapBuilderNode():
 
     def build_roadmap(self, voronoi, frontiers, safe_dist=2):
         """
-        Build roadmap dduring the map exploration.
+        Build roadmap during the map exploration.
         """
         roadmap = nx.Graph()
         origin_pos = voronoi.origin.position  # Type: geometery_msgs/Point
+
         # Add edges and nodes from Voronoi Diagram
         for segment in voronoi.vertices:
-            point_s = ( round(segment.path[0].x + origin_pos.x, 2),
-                        round(segment.path[0].y + origin_pos.y, 2))
-            point_t = ( round(segment.path[-1].x + origin_pos.x, 2),
-                        round(segment.path[-1].y + origin_pos.y, 2))
+            # Generate node of point_s
+            x_s = round(segment.path[0].x+origin_pos.x, 2)
+            y_s = round(segment.path[0].y+origin_pos.y, 2)
+            point_s = (x_s, y_s)
             roadmap.add_node(point_s, label='vertex')
+            # Generate node of point_t
+            x_t = round(segment.path[-1].x+origin_pos.x, 2)
+            y_t = round(segment.path[-1].y+origin_pos.y, 2)
+            point_t = (x_t, y_t)
             roadmap.add_node(point_t, label='vertex')
+            # Add the edge between point_s and point_t
             roadmap.add_edge(point_s, point_t, cost=distance(point_s, point_t))
 
+        roadmap = self.connect_roadmap(roadmap)
+
         # Add frontiers into roadmap
-        for frontier_ in frontiers:
-            centroid_ = frontier_.centroid
-            centroid_node = (round(centroid_.x, 2), round(centroid_.y, 2))
-            node, _ = self.find_nearest_node(roadmap, centroid_)
-            roadmap.add_node(centroid_node, label='frontier')
-            roadmap.add_edge(centroid_node, node, cost=distance(centroid_node, node))
+        # for frontier in frontiers:
+        #     centroid_node = (round(frontier.centroid.x, 2), round(frontier.centroid.y, 2))
+        #     for node in self.find_close_nodes(roadmap, centroid_node):
+        #         roadmap.add_node(centroid_node, label='frontier')
+        #         roadmap.add_edge(centroid_node, node, cost=distance(centroid_node, node))
 
         return roadmap
+
+    def connect_roadmap(self, roadmap):
+        """
+        Connect the roadmap to make it connected.
+        """
+        while not nx.is_connected(roadmap):
+            # Find connected components
+            components = list(nx.connected_components(roadmap))
+            closest_edges = []
+            for comp_i, comp_j in combinations(components, 2):
+                closest_edge = (np.inf, None, None)
+                # Find the closest edge
+                for node_i in comp_i:
+                    for node_j in comp_j:
+                        if distance(node_i, node_j) < closest_edge[0]:
+                            # check if the edge is corss with obstacles
+                            if not self.if_cross_with_obstacles(node_i, node_j):
+                                closest_edge = (distance(node_i, node_j), node_i, node_j)
+                closest_edges.append(closest_edge)
+            # Add closest edge
+            for dist, node_i, node_j in closest_edges:
+                roadmap.add_edge(node_i, node_j, cost=dist)
+        return roadmap
+
+    def if_cross_with_obstacles(self, node_s, node_t):
+        """
+        Check if the line between source and target node is cross with obstacles.
+        """
+        return False
+
 
     def roadmap2MarkerArray(self, roadmap: nx.Graph):
         """
@@ -287,9 +325,9 @@ class RoadmapBuilderNode():
 
         return roadmap_msg
 
-    def find_nearest_node(self, roadmap: nx.Graph, point: Point):
+    def find_nearest_node(self, roadmap, point):
         """
-        Get the nearest node in roadmap to given point。
+        Get the nearest node in roadmap to given point.
         ----------
         Paramaters:
             roadmap (networkx.Graph): roadmap in networkx.Graph form
@@ -302,12 +340,27 @@ class RoadmapBuilderNode():
         min_index_ = 0
         min_dis_ = math.inf
         for i in range(len(nodes_)):
-            dis_ = math.sqrt((point.x - nodes_[i][0])**2 + (point.y - nodes_[i][1])**2)
+            dis_ = distance(point, nodes_[i])
             if dis_ < min_dis_:
                 min_dis_ = dis_
                 min_index_ = i
-        
         return nodes_[min_index_], min_dis_
+
+    def find_close_nodes(self, roadmap, point, close_dist=1.0):
+        """
+        Find all nodes within close_dist.
+        """
+        close_nodes = []
+        nodes = list(roadmap.nodes)
+        for node in nodes:
+            if distance(point, node) <= close_dist:
+                close_nodes.append(node)
+                print(point, node)
+        # if not close_nodes:
+        #     close_node, _ = self.find_nearest_node(roadmap, point)
+        #     close_nodes = [close_node]
+        return close_nodes
+
 
     def display_roadmap(self, roadmap: nx.Graph):
         option = {

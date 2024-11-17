@@ -13,18 +13,20 @@
 	<arg name="max_speed" value="0.4"/>
 	<!-- slam parameter -->
 	<arg name="maxUrange" value="5.9"/>
-	<arg name="xmin" value="-30"/>
-	<arg name="ymin" value="-30"/>
-	<arg name="xmax" value="30"/>
-	<arg name="ymax" value="30"/>
+	<arg name="xmin" value="0"/>
+	<arg name="ymin" value="0"/>
+	<arg name="xmax" value="20"/>
+	<arg name="ymax" value="20"/>
 	<!-- frontier generator parameter -->
 	<arg name="frontier_max_x" value="27"/>
 	<arg name="frontier_max_y" value="18"/>
 	<arg name="frontier_min_x" value="-27"/>
 	<arg name="frontier_min_y" value="-18"/>
+	<!-- roadmap parameter -->
+	<arg name="segment_length" value="1.0"/>
 	<!-- map merge parameter-->
-	<arg name="map_origin_x" value="-30"/>
-	<arg name="map_origin_y" value="-30"/>
+	<arg name="map_origin_x" value="0"/>
+	<arg name="map_origin_y" value="0"/>
 	<!-- task_planner_node -->
 	<arg name="robot_num" value="4"/>
 
@@ -46,6 +48,7 @@
 	<!-- Roadmap Builder -->
 	<include file="$(find roadmap_builder)/launch/dynamic_roadmap_builder.launch">
 		<arg name="map_topic" value="merged_map"/>
+		<arg name="segment_length" value="$(arg segment_length)"/>
 		<arg name="frontier_max_x" value="$(arg frontier_max_x)"/>
 		<arg name="frontier_max_y" value="$(arg frontier_max_y)"/>
 		<arg name="frontier_min_x" value="$(arg frontier_min_x)"/>

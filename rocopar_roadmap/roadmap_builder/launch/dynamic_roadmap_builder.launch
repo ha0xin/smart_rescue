@@ -30,6 +30,7 @@
 	<node name="roadmap_builder_node" pkg="roadmap_builder" type="roadmap_builder_node.py"
 		output="screen" respawn="true">
 		<param name="map_topic" value="$(arg map_topic)"/>
+        <param name="segment_length" value="$(arg segment_length)"/>
 	</node>
 
 </launch>
